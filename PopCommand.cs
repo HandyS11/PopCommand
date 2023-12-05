@@ -6,7 +6,7 @@ using System.Text.RegularExpressions;
 
 namespace Oxide.Plugins
 {
-    [Info("PopCommand", "HandyS11", "1.0.0")]
+    [Info("PopCommand", "HandyS11", "1.0.1")]
     [Description("Displays the population informations of your server")]
     public class PopCommand : RustPlugin
     {
@@ -131,7 +131,7 @@ namespace Oxide.Plugins
             if (config.DisplayOption.ShowPlayerCount)
                 datas.Add(BasePlayer.activePlayerList.Count);
             if (config.DisplayOption.ShowServerSlots)
-                datas.Add(ServerMgr.AvailableSlots);
+                datas.Add(ConVar.Server.maxplayers);
             if (config.DisplayOption.ShowSleepers)
                 datas.Add(BasePlayer.sleepingPlayerList.Count);
             if (config.DisplayOption.ShowJoiningPlayers)
@@ -186,7 +186,7 @@ namespace Oxide.Plugins
 
             SendChatMessage(player, GetMessage(MessageKey.PopMessageAdmin, player.UserIDString,
                 BasePlayer.activePlayerList.Count,
-                ServerMgr.AvailableSlots,
+                ConVar.Server.maxplayers,
                 BasePlayer.sleepingPlayerList.Count,
                 ServerMgr.Instance.connectionQueue.joining.Count,
                 ServerMgr.Instance.connectionQueue.queue.Count
