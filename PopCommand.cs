@@ -3,23 +3,17 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using ConVar;
 
 namespace Oxide.Plugins
 {
-    [Info("PopCommand", "HandyS11", "1.0.1")]
-    [Description("Displays the population informations of your server")]
+    [Info("PopCommand", "HandyS11", "1.0.2")]
+    [Description("Displays the population information of your server")]
     public class PopCommand : RustPlugin
     {
-        #region Fields
-
-        private const string popCommand = "popcommand.use";
-        private const string popCommandAdmin = "popcommand.admin";
-
-        private Configuration config;
-
-        #endregion
-
         #region Configuration
+
+        private Configuration _configuration;
 
         private sealed class Configuration
         {
@@ -75,34 +69,52 @@ namespace Oxide.Plugins
         protected override void LoadConfig()
         {
             base.LoadConfig();
-            config = Config.ReadObject<Configuration>();
+            _configuration = Config.ReadObject<Configuration>();
 
             SaveConfig();
         }
 
         protected override void LoadDefaultConfig()
         {
-            config = GetDefaultConfig();
+            _configuration = GetDefaultConfig();
         }
 
         protected override void SaveConfig()
         {
-            Config.WriteObject(config, true);
+            Config.WriteObject(_configuration, true);
         }
 
         #endregion
+
+        #region Permissions
+
+        private static class Permission
+        {
+            public const string PopCommand = "popcommand.pop";
+            public const string PopCommandAdmin = "popcommand.apop";
+        }
+
+        # endregion
 
         #region Hooks
 
         private void Init()
         {
-            permission.RegisterPermission(popCommand, this);
-            permission.RegisterPermission(popCommandAdmin, this);
+            permission.RegisterPermission(Permission.PopCommand, this);
+            permission.RegisterPermission(Permission.PopCommandAdmin, this);
         }
 
-        private void Unload()
+        private void OnPlayerChat(BasePlayer player, string message, Chat.ChatChannel channel)
         {
-            config = null;
+            switch (message)
+            {
+                case "!pop":
+                    PopPlayer(player, "pop");
+                    break;
+                case "!apop":
+                    PopAdmin(player, "apop");
+                    break;
+            }
         }
 
         #endregion
@@ -111,12 +123,12 @@ namespace Oxide.Plugins
 
         private void SendChatMessage(BasePlayer player, string message)
         {
-            Player.Message(player, message, config.ChatAvatar);
+            Player.Message(player, message, _configuration.ChatAvatar);
         }
 
         private void SendMessageToAll(string message)
         {
-            Server.Broadcast(message, config.ChatAvatar);
+            Server.Broadcast(message, _configuration.ChatAvatar);
         }
 
         private bool HasPermission(BasePlayer player, string permissionName)
@@ -124,27 +136,27 @@ namespace Oxide.Plugins
             return permission.UserHasPermission(player.UserIDString, permissionName);
         }
 
-        private List<int> GetDatas()
+        private IEnumerable<int> GetData()
         {
-            List<int> datas = new List<int>();
+            var data = new List<int>();
 
-            if (config.DisplayOption.ShowPlayerCount)
-                datas.Add(BasePlayer.activePlayerList.Count);
-            if (config.DisplayOption.ShowServerSlots)
-                datas.Add(ConVar.Server.maxplayers);
-            if (config.DisplayOption.ShowSleepers)
-                datas.Add(BasePlayer.sleepingPlayerList.Count);
-            if (config.DisplayOption.ShowJoiningPlayers)
-                datas.Add(ServerMgr.Instance.connectionQueue.joining.Count);
-            if (config.DisplayOption.ShowPlayersInQueue)
-                datas.Add(ServerMgr.Instance.connectionQueue.queue.Count);
+            if (_configuration.DisplayOption.ShowPlayerCount)
+                data.Add(BasePlayer.activePlayerList.Count);
+            if (_configuration.DisplayOption.ShowServerSlots)
+                data.Add(ConVar.Server.maxplayers);
+            if (_configuration.DisplayOption.ShowSleepers)
+                data.Add(BasePlayer.sleepingPlayerList.Count);
+            if (_configuration.DisplayOption.ShowJoiningPlayers)
+                data.Add(ServerMgr.Instance.connectionQueue.joining.Count);
+            if (_configuration.DisplayOption.ShowPlayersInQueue)
+                data.Add(ServerMgr.Instance.connectionQueue.queue.Count);
 
-            return datas;
+            return data;
         }
 
         private bool VerifyPlaceholders(string template, int expectedCount)
         {
-            int actualCount = Regex.Matches(template, @"\{\d+\}").Count;
+            var actualCount = Regex.Matches(template, @"\{\d+\}").Count;
             return actualCount <= expectedCount;
         }
 
@@ -159,26 +171,26 @@ namespace Oxide.Plugins
         }
 
         [ChatCommand(Command.PopPlayer)]
-        private void PopPlayer(BasePlayer player, string command, string[] args)
+        private void PopPlayer(BasePlayer player, string command, string[] args = null)
         {
-            if (config.UsePermissionForPlayers && !HasPermission(player, popCommand))
+            if (_configuration.UsePermissionForPlayers && !HasPermission(player, Permission.PopCommand))
             {
                 SendChatMessage(player, GetMessage(MessageKey.PopPermissionDeny, player.UserIDString));
                 return;
             }
 
-            if (config.DoBroadcast)
+            if (_configuration.DoBroadcast)
             {
-                SendMessageToAll(GetMessage(MessageKey.PopMessage, player.UserIDString, GetDatas().Cast<object>().ToArray()));
+                SendMessageToAll(GetMessage(MessageKey.PopMessage, player.UserIDString, GetData().Cast<object>().ToArray()));
                 return;
             }
-            SendChatMessage(player, GetMessage(MessageKey.PopMessage, player.UserIDString, GetDatas().Cast<object>().ToArray()));
+            SendChatMessage(player, GetMessage(MessageKey.PopMessage, player.UserIDString, GetData().Cast<object>().ToArray()));
         }
 
         [ChatCommand(Command.PopAdmin)]
-        private void PopAdmin(BasePlayer player, string command, string[] args)
+        private void PopAdmin(BasePlayer player, string command, string[] args = null)
         {
-            if (!player.IsAdmin || !HasPermission(player, popCommandAdmin))
+            if (!player.IsAdmin || !HasPermission(player, Permission.PopCommandAdmin))
             {
                 SendChatMessage(player, GetMessage(MessageKey.PopAdminPermissionDeny, player.UserIDString));
                 return;
@@ -210,33 +222,30 @@ namespace Oxide.Plugins
         {
             lang.RegisterMessages(new Dictionary<string, string>
             {
-                [MessageKey.PopMessage] = "Players onlines: {0}/{1}",
-                [MessageKey.PopMessageAdmin] = "Players onlines: {0}/{1} | Sleeping: {2} | Joining: {3} | Queued: {4}",
+                [MessageKey.PopMessage] = "Players online: <color=orange>{0}</color>/<color=orange>{1}</color>",
+                [MessageKey.PopMessageAdmin] = "Players online: <color=orange>{0}</color>/<color=orange>{1}</color> | Sleeping: <color=orange>{2}</color> | Joining: <color=orange>{3}</color> | Queued: <color=orange>{4}</color>",
                 [MessageKey.PopPermissionDeny] = "You are not allowed to run this command!",
                 [MessageKey.PopAdminPermissionDeny] = "Only administrators can run this command!",
                 [MessageKey.PopError] = "The config/lang file contains some errors!",
             }, this);
             lang.RegisterMessages(new Dictionary<string, string>
             {
-                [MessageKey.PopMessage] = "Joueurs en ligne : {0}/{1}",
-                [MessageKey.PopMessageAdmin] = "Joueurs en ligne : {0}/{1} | Endormi : {2} | En train de rejoindre : {3} | Dans la queue : {4}",
+                [MessageKey.PopMessage] = "Joueurs en ligne : <color=green>{0}</color>/<color=red>{1}</color>",
+                [MessageKey.PopMessageAdmin] = "Joueurs en ligne : <color=orange>{0}</color>/<color=orange>{1}</color> | Endormi : <color=orange>{2}</color> | En train de rejoindre : <color=orange>{3}</color> | Dans la queue : <color=orange>{4}</color>",
                 [MessageKey.PopPermissionDeny] = "Vous n'êtes pas autorisé à utiliser cette commande !",
                 [MessageKey.PopAdminPermissionDeny] = "Seul les administrateurs peuvent utiliser cette commande !",
-                [MessageKey.PopError] = "Le fichier de configuration/traduction contient des erreurs !",
+                [MessageKey.PopError] = "Le fichier de configuration et/ou de traduction contient des erreurs !",
             }, this, "fr");
         }
 
-        private string GetMessage(string messageKey, string playerId = null, params object[] datas)
+        private string GetMessage(string messageKey, string playerId = null, params object[] data)
         {
             try
             {
-                string template = lang.GetMessage(messageKey, this, playerId);
-                if (!VerifyPlaceholders(template, datas.Length))
-                {
-                    Puts("Wrong number of params compared to the string");
-                    return lang.GetMessage(MessageKey.PopError, this, playerId);
-                }
-                return string.Format(template, datas);
+                var template = lang.GetMessage(messageKey, this, playerId);
+                if (VerifyPlaceholders(template, data.Length)) return string.Format(template, data);
+                Puts("Wrong number of params compared to the string");
+                return lang.GetMessage(MessageKey.PopError, this, playerId);
             }
             catch (Exception exception)
             {
