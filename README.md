@@ -1,9 +1,9 @@
 # Features
 
-* Displays the serveur population infos
+* Displays the serveur population informations
 * Tweak the information displayed in the chat
 
-![](https://imgur.com/DmjZyN8.png)
+![](https://i.imgur.com/U69z6c7.png)
 
 # Permissions
 
@@ -14,6 +14,8 @@
 
 * `pop` - Displays the population infos
 * `apop` - Displays the full population infos (for admins)
+
+Also work with the **!** prefix (such as `!pop`)
 
 # Configuration
 
@@ -36,7 +38,7 @@ Default configuration:
 
 * `Use permission for lambda players` (**true** or **false**) - If true, players will need the `popcommand.use` permission to use the `/pop` command
 * `Broadcast to every player on /pop` (**true** or **false**) - If true, the `/pop` command will be broadcasted to every player on the server
-* `Chat default avatar` (**ulong***) - The avatar displayed in the chat when using the `/pop` command *(to replace the rust logo)*
+* `Chat default avatar` (**ulong***) - The steam avatar that appears on command trigger *(steamId)*
 
 **WARNING:** 
 You can tweak theses options but make sure to edit the **lang file** to match your changes
@@ -54,8 +56,8 @@ Default english translation:
 
 ```json
 {
-  "PopCommand.ChatMessage": "Players onlines: {0}/{1}",
-  "PopCommand.AdminMessage": "Players onlines: {0}/{1} | Sleeping: {2} | Joining: {3} | Queued: {4}",
+  "PopCommand.ChatMessage": "Players online: <color=orange>{0}</color>/<color=orange>{1}</color>",
+  "PopCommand.AdminMessage": "Players online: <color=orange>{0}</color>/<color=orange>{1}</color> | Sleeping: <color=orange>{2}</color> | Joining: <color=orange>{3}</color> | Queued: <color=orange>{4}</color>",
   "PopCommand.PermissionDeny": "You are not allowed to run this command!",
   "PopCommand.AdminPermissionDeny": "Only administrators can run this command!",
   "PopCommand.Error": "The config/lang file contains some errors!"
